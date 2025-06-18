@@ -30,6 +30,10 @@
 //////////////////////////////////////////////////////////////////////
 //
 
+#ifdef __RVVF__
+#include <RAJA/policy/tensor/arch/rvvf.hpp>
+#endif
+
 #ifdef __AVX512F__
 #include <RAJA/policy/tensor/arch/avx512.hpp>
 #endif

@@ -55,6 +55,16 @@ struct RegisterTraits;
 namespace expt
 {
 
+#ifdef __RVVF__
+struct rvv_register
+{};
+
+#ifndef RAJA_TENSOR_REGISTER_TYPE
+#define RAJA_TENSOR_REGISTER_TYPE RAJA::expt::rvv_register
+#endif
+#endif
+    
+
 #ifdef __AVX512F__
 struct avx512_register
 {};
