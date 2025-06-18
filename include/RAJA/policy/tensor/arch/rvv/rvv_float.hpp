@@ -20,12 +20,12 @@
 #define RAJA_policy_vector_register_rvv_float_HPP
 
 #define VTYPE_IMPL(dtype, MUL) v##dtype##m##MUL##_t
-#define VSETMAX(LANE, LMUL) __riscv_vsetvlmax_e##LANE##m##LMUL
+#define VSETMAX(LANE, __LMUL__) __riscv_vsetvlmax_e##LANE##m##__LMUL__
 #define OP_IMPL(NAME, TYPE, DTYPE, MUL, ATTR) __riscv_##NAME##_##TYPE##_##DTYPE##m##MUL##ATTR
 #define REINTERPRE_IMPL(SRC_TYPE, DES_TYPE, MUL) __riscv_vreinterpret_v_##SRC_TYPE##m##MUL##_##DES_TYPE##m##MUL
 
 #define VTYPE(type, MUL) VTYPE_IMPL(type, MUL)
-#define VSET(LANE, LMUL) VSETMAX(LANE, LMUL)
+#define VSET(LANE, __LMUL__) VSETMAX(LANE, __LMUL__)
 #define VOP(NAME, TYPE, DTYPE, MUL, ATTR) OP_IMPL(NAME, TYPE, DTYPE, MUL, ATTR)
 #define VREINTERPRET(SRC_TYPE, DES_TYPE, MUL) REINTERPRE_IMPL(SRC_TYPE, DES_TYPE, MUL)
 
@@ -43,16 +43,16 @@ namespace expt
 {
 
 
-#ifndef VL
-#define VL 256
+#ifndef __VL__
+#define __VL__ 256
 #endif 
 
-#ifndef LMUL
-#define LMUL 1
+#ifndef __LMUL__
+#define __LMUL__ 1
 #endif
   
 
-typedef VTYPE(float32, LMUL) fixed_float32_t __attribute__((riscv_rvv_vector_bits(LMUL * VL)));
+typedef VTYPE(float32, __LMUL__) fixed_float32_t __attribute__((riscv_rvv_vector_bits(__LMUL__ * __VL__)));
 
 template<>
 class Register<float, rvv_register>
@@ -76,46 +76,46 @@ private:
 
   RAJA_INLINE
   auto createMask(camp::idx_t N) const {
-    if constexpr (LMUL == 1){
+    if constexpr (__LMUL__ == 1){
       auto idx = VOP(vid, v, u32, 1,)(vl);
       return VOP(vmsltu, vx, u32, 1, _b32)(idx, (uint32_t)N, vl);
     }
-    else if constexpr(LMUL == 2){
+    else if constexpr(__LMUL__ == 2){
       auto idx = VOP(vid, v, u32, 2,)(vl);
       return VOP(vmsltu, vx, u32, 2, _b16)(idx, (uint32_t)N, vl);
     }
-    else if constexpr(LMUL == 4){
+    else if constexpr(__LMUL__ == 4){
       auto idx = VOP(vid, v, u32, 4,)(vl);
       return VOP(vmsltu, vx, u32, 4, _b8)(idx, (uint32_t)N, vl);
     }
-    else if constexpr(LMUL == 8){
+    else if constexpr(__LMUL__ == 8){
       auto idx = VOP(vid, v, u32, 8,)(vl);
       return VOP(vmsltu, vx, u32, 8, _b4)(idx, (uint32_t)N, vl);
     }
   }  
 public:
-  static constexpr camp::idx_t s_num_elem = VL * LMUL / 32;
+  static constexpr camp::idx_t s_num_elem = __VL__ * __LMUL__ / 32;
 
   /*!
    * @brief Default constructor, zeros register contents
    */
   RAJA_INLINE
   Register(){
-    vl = VSET(32, LMUL)();
-    m_value = VOP(vfmv, v_f, f32, LMUL,)((float)0, vl);
+    vl = VSET(32, __LMUL__)();
+    m_value = VOP(vfmv, v_f, f32, __LMUL__,)((float)0, vl);
   }
 
   /*!
    * @brief Copy constructor from underlying simd register
    */
   RAJA_INLINE
-  explicit Register(register_type const& c) : m_value(c), vl(VSET(32, LMUL)()) {}
+  explicit Register(register_type const& c) : m_value(c), vl(VSET(32, __LMUL__)()) {}
 
   /*!
    * @brief Copy constructor
    */
   RAJA_INLINE
-  Register(self_type const& c) : base_type(c), m_value(c.m_value), vl(VSET(32, LMUL)()) {}
+  Register(self_type const& c) : base_type(c), m_value(c.m_value), vl(VSET(32, __LMUL__)()) {}
 
   /*!
    * @brief Copy assignment constructor
@@ -133,8 +133,8 @@ public:
    * Sets all elements to same value (broadcast).
    */
   RAJA_INLINE
-  Register(element_type const& c) : vl(VSET(32, LMUL)()){
-    m_value = VOP(vfmv, v_f, f32, LMUL,)((float)c, vl);
+  Register(element_type const& c) : vl(VSET(32, __LMUL__)()){
+    m_value = VOP(vfmv, v_f, f32, __LMUL__,)((float)c, vl);
   }
   
   /*!
@@ -153,7 +153,7 @@ public:
 #ifdef RAJA_ENABLE_VECTOR_STATS
     RAJA::tensor_stats::num_vector_load_packed++;
 #endif
-    m_value = VOP(vle32, v, f32, LMUL,)(ptr,  vl);
+    m_value = VOP(vle32, v, f32, __LMUL__,)(ptr,  vl);
     return *this;
   }
 
@@ -168,7 +168,7 @@ public:
 #ifdef RAJA_ENABLE_VECTOR_STATS
     RAJA::tensor_stats::num_vector_load_packed_n++;
 #endif
-    m_value = VOP(vle32, v, f32, LMUL,_m)(createMask(N), ptr, vl);
+    m_value = VOP(vle32, v, f32, __LMUL__,_m)(createMask(N), ptr, vl);
     return *this;
   }
 
@@ -182,7 +182,7 @@ public:
 #ifdef RAJA_ENABLE_VECTOR_STATS
     RAJA::tensor_stats::num_vector_load_strided++;
 #endif
-    m_value = VOP(vlse32, v, f32, LMUL,)(ptr, stride * sizeof(element_type), vl);
+    m_value = VOP(vlse32, v, f32, __LMUL__,)(ptr, stride * sizeof(element_type), vl);
     return *this;
   }
 
@@ -200,7 +200,7 @@ public:
     RAJA::tensor_stats::num_vector_load_strided_n++;
 #endif
     ptrdiff_t byte_stride = (ptrdiff_t)(stride * sizeof(float));
-    m_value = VOP(vlse32, v, f32, LMUL ,_m)(createMask(N), ptr, byte_stride, vl);
+    m_value = VOP(vlse32, v, f32, __LMUL__ ,_m)(createMask(N), ptr, byte_stride, vl);
     return *this;
   }
 
@@ -219,8 +219,8 @@ public:
 #ifdef RAJA_ENABLE_VECTOR_STATS
     RAJA::tensor_stats::num_vector_load_strided_n++;
 #endif
-    auto index = VREINTERPRET(i32, u32, LMUL)(offsets.get_register());
-    m_value = VOP(vluxei32, v, f32, LMUL, )(ptr, index, vl);
+    auto index = VREINTERPRET(i32, u32, __LMUL__)(offsets.get_register());
+    m_value = VOP(vluxei32, v, f32, __LMUL__, )(ptr, index, vl);
     return *this;
   }
 
@@ -241,8 +241,8 @@ public:
 #ifdef RAJA_ENABLE_VECTOR_STATS
     RAJA::tensor_stats::num_vector_load_strided_n++;
 #endif
-    auto index = VREINTERPRET(i32, u32, LMUL)(offsets.get_register());
-    m_value = VOP(vluxei32, v, f32, LMUL, _m)(createMask(N), ptr, index, vl);
+    auto index = VREINTERPRET(i32, u32, __LMUL__)(offsets.get_register());
+    m_value = VOP(vluxei32, v, f32, __LMUL__, _m)(createMask(N), ptr, index, vl);
     return *this;
   }
 
@@ -256,7 +256,7 @@ public:
 #ifdef RAJA_ENABLE_VECTOR_STATS
     RAJA::tensor_stats::num_vector_store_packed++;
 #endif
-    VOP(vse32, v, f32, LMUL,)(ptr, m_value, vl);
+    VOP(vse32, v, f32, __LMUL__,)(ptr, m_value, vl);
     return *this;
   }
 
@@ -270,7 +270,7 @@ public:
 #ifdef RAJA_ENABLE_VECTOR_STATS
     RAJA::tensor_stats::num_vector_store_packed_n++;
 #endif
-    VOP(vse32, v, f32, LMUL, _m)(createMask(N), ptr, m_value, vl);
+    VOP(vse32, v, f32, __LMUL__, _m)(createMask(N), ptr, m_value, vl);
     return *this;
   }
 
@@ -284,7 +284,7 @@ public:
 #ifdef RAJA_ENABLE_VECTOR_STATS
     RAJA::tensor_stats::num_vector_store_strided++;
 #endif
-    VOP(vsse32, v, f32, LMUL,)(ptr, stride * sizeof(element_type), m_value, vl);
+    VOP(vsse32, v, f32, __LMUL__,)(ptr, stride * sizeof(element_type), m_value, vl);
     return *this;
   }
 
@@ -300,7 +300,7 @@ public:
 #ifdef RAJA_ENABLE_VECTOR_STATS
     RAJA::tensor_stats::num_vector_store_strided_n++;
 #endif
-    VOP(vsse32, v, f32, LMUL, _m)(createMask(N), ptr, stride * sizeof(element_type), m_value, vl);
+    VOP(vsse32, v, f32, __LMUL__, _m)(createMask(N), ptr, stride * sizeof(element_type), m_value, vl);
     return *this;
   }
 
@@ -313,7 +313,7 @@ public:
   element_type get(camp::idx_t i) const 
   { 
     element_type temp[vl];
-    VOP(vse32, v, f32, LMUL,)(temp, m_value, vl);
+    VOP(vse32, v, f32, __LMUL__,)(temp, m_value, vl);
     return temp[i];
   }
 
@@ -326,9 +326,9 @@ public:
   self_type& set(element_type value, camp::idx_t i)
   {
     element_type tmp[vl];
-    VOP(vse32, v, f32, LMUL,)(tmp, m_value, vl);
+    VOP(vse32, v, f32, __LMUL__,)(tmp, m_value, vl);
     tmp[i] = value;
-    m_value = VOP(vle32, v, f32, LMUL, )(tmp, vl);
+    m_value = VOP(vle32, v, f32, __LMUL__, )(tmp, vl);
     return *this;
   }
 
@@ -337,7 +337,7 @@ public:
   RAJA_INLINE
   self_type& broadcast(element_type const& value)
   {
-    m_value = VOP(vfmv, v_f, f32, LMUL, )(value, vl);
+    m_value = VOP(vfmv, v_f, f32, __LMUL__, )(value, vl);
     return *this;
   }
 
@@ -352,10 +352,10 @@ public:
     if (i >= vl)
       return *this;
     element_type temp[vl];
-    VOP(vse32, v, f32, LMUL,)(temp, m_value, vl);
+    VOP(vse32, v, f32, __LMUL__,)(temp, m_value, vl);
     element_type elem = temp[i];
     self_type result;
-    result.m_value = VOP(vfmv, v_f, f32, LMUL, )(elem, vl);
+    result.m_value = VOP(vfmv, v_f, f32, __LMUL__, )(elem, vl);
     return result;
   }
 
@@ -373,7 +373,7 @@ public:
   RAJA_INLINE
   self_type add(self_type const& b) const
   {
-    return self_type(VOP(vfadd, vv, f32, LMUL,)(m_value, b.m_value, vl));
+    return self_type(VOP(vfadd, vv, f32, __LMUL__,)(m_value, b.m_value, vl));
   }
 
   RAJA_HOST_DEVICE
@@ -381,7 +381,7 @@ public:
   RAJA_INLINE
   self_type subtract(self_type const& b) const
   {
-    return self_type(VOP(vfsub, vv, f32, LMUL,)(m_value, b.m_value, vl));
+    return self_type(VOP(vfsub, vv, f32, __LMUL__,)(m_value, b.m_value, vl));
   }
 
   RAJA_HOST_DEVICE
@@ -389,7 +389,7 @@ public:
   RAJA_INLINE
   self_type multiply(self_type const& b) const
   {
-    return self_type(VOP(vfmul, vv, f32, LMUL,)(m_value, b.m_value, vl));
+    return self_type(VOP(vfmul, vv, f32, __LMUL__,)(m_value, b.m_value, vl));
   }
 
   RAJA_HOST_DEVICE
@@ -397,7 +397,7 @@ public:
   RAJA_INLINE
   self_type divide(self_type const& b) const
   {
-    return self_type(VOP(vfdiv, vv, f32, LMUL,)(m_value, b.m_value, vl));
+    return self_type(VOP(vfdiv, vv, f32, __LMUL__,)(m_value, b.m_value, vl));
   }
 
   RAJA_HOST_DEVICE
@@ -405,7 +405,7 @@ public:
   RAJA_INLINE
   self_type divide_n(self_type const& b, camp::idx_t N) const
   {
-    return self_type(VOP(vfdiv, vv, f32, LMUL, _m)(createMask(N), m_value, b.m_value, vl));
+    return self_type(VOP(vfdiv, vv, f32, __LMUL__, _m)(createMask(N), m_value, b.m_value, vl));
   }
 
 // // only use FMA's if the compiler has them turned on
@@ -415,7 +415,7 @@ public:
   RAJA_HOST_DEVICE
   self_type multiply_add(self_type const& b, self_type const& c) const
   {
-    return self_type(VOP(vfmadd, vv, f32, LMUL,)(c.m_value, m_value, b.m_value, vl));
+    return self_type(VOP(vfmadd, vv, f32, __LMUL__,)(c.m_value, m_value, b.m_value, vl));
   }
 
   RAJA_INLINE
@@ -423,7 +423,7 @@ public:
   RAJA_HOST_DEVICE
   self_type multiply_subtract(self_type const& b, self_type const& c) const
   {
-    return self_type(VOP(vfmsub, vv, f32, LMUL,)(c.m_value, m_value, b.m_value, vl));
+    return self_type(VOP(vfmsub, vv, f32, __LMUL__,)(c.m_value, m_value, b.m_value, vl));
   }
 #endif
 
@@ -432,10 +432,10 @@ public:
    * @return Sum of the values of the vectors scalar elements
    */
   RAJA_INLINE
-  element_type sum(camp::idx_t N = LMUL * 4) const
+  element_type sum(camp::idx_t N = __LMUL__ * 4) const
   {
     auto init_scale = VOP(vfmv, v_f, f32, 1,)((float)0, vl);
-    auto vsum = VOP(vfredosum, vs, f32, LMUL,_f32m1_m)(createMask(N), m_value, init_scale, vl); 
+    auto vsum = VOP(vfredosum, vs, f32, __LMUL__,_f32m1_m)(createMask(N), m_value, init_scale, vl); 
     element_type result[1];
     VOP(vse32, v, f32, 1, )(result, vsum, vl);
     return result[0];
@@ -446,10 +446,10 @@ public:
    * @return The largest scalar element in the register
    */
   RAJA_INLINE
-  element_type max(camp::idx_t N = LMUL * 4) const
+  element_type max(camp::idx_t N = __LMUL__ * 4) const
   {
     auto e_ = VOP(vfmv, v_f, f32, 1,)(-INFINITY, 1);
-    auto vmax = VOP(vfredmax, vs, f32, LMUL, _f32m1_m)(createMask(N), m_value, e_, vl);
+    auto vmax = VOP(vfredmax, vs, f32, __LMUL__, _f32m1_m)(createMask(N), m_value, e_, vl);
     element_type result[1];
     VOP(vse32, v, f32, 1, )(result, vmax, vl);
     return result[0];
@@ -462,7 +462,7 @@ public:
   RAJA_INLINE
   self_type vmax(self_type a) const
   {
-    return self_type(VOP(vfmax, vv, f32, LMUL, )(m_value, a.m_value, vl));
+    return self_type(VOP(vfmax, vv, f32, __LMUL__, )(m_value, a.m_value, vl));
   }
 
   /*!
@@ -473,7 +473,7 @@ public:
   element_type min() const
   {
     auto e_ = VOP(vfmv, v_f, f32, 1,)(INFINITY, 1);
-    auto vmin = VOP(vfredmin, vs, f32, LMUL, _f32m1)(m_value, e_, vl);
+    auto vmin = VOP(vfredmin, vs, f32, __LMUL__, _f32m1)(m_value, e_, vl);
     element_type result[1];
     VOP(vse32, v, f32, 1, )(result, vmin, vl);
     return result[0];
@@ -487,7 +487,7 @@ public:
   element_type min_n(camp::idx_t N) const
   {
     auto e_ = VOP(vfmv, v_f, f32, 1,)(INFINITY, 1);
-    auto vmin_n = VOP(vfredmin, vs, f32, LMUL, _f32m1_m)(createMask(N), m_value, e_, vl);
+    auto vmin_n = VOP(vfredmin, vs, f32, __LMUL__, _f32m1_m)(createMask(N), m_value, e_, vl);
     element_type result[1];
     VOP(vse32, v, f32, 1, )(result, vmin_n, vl);
     return result[0];
@@ -501,7 +501,7 @@ public:
   RAJA_INLINE
   self_type vmin(self_type a) const
   {
-    return self_type(VOP(vfmin, vv, f32, LMUL, )(m_value, a.m_value, vl));
+    return self_type(VOP(vfmin, vv, f32, __LMUL__, )(m_value, a.m_value, vl));
   }
 // 
 };
